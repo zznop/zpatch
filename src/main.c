@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <stdbool.h>
-#include <stdint.h>
+#include "file.h"
+#include "config.h"
+#include "assemble.h"
 
 static void print_help(void)
 {
@@ -30,16 +32,34 @@ static bool is_arch_valid(char *arch)
     return false;
 }
 
+static bool patch_file(config_t *config)
+{
+    bool rv;
+    mapped_file_t *inprog = NULL;
+
+    /* Map the input file */
+    rv = map_file(&inprog, config->inprog_name);
+    if (rv == false)
+        return false;
+
+    rv = write_patch_assembly();
+    if (rv == false)
+        goto done;
+
+done:
+    unmap_file(inprog);
+    return rv;
+}
+
 int main(int argc, char **argv)
 {
     int opt;
-    int i = 0;
+    int i = 1;
     int j = 0;
-    char *inprog_name = NULL;
-    char *outprog_name = NULL;
-    char *arch = "m68k";
-    uint32_t offset = -1;
+    config_t config = {0};
 
+    config.arch.archname = "m68k";
+    config.offset = -1;
     while (i < argc) {
         if ((opt = getopt(argc, argv, "ha:")) != -1) {
             switch (opt) {
@@ -47,23 +67,22 @@ int main(int argc, char **argv)
                 print_help();
                 return 0;
             case 'a':
-                arch = optarg; i++;
+                config.arch.archname = optarg; i++;
                 break;
             default:
                 print_help();
                 return 1;
             }
         } else {
-            /* Required positional arguments (backwards) */
             switch (j) {
             case 0:
-                inprog_name = argv[i];
+                config.inprog_name = argv[i];
                 break;
             case 1:
-                outprog_name = argv[i];
+                config.outprog_name = argv[i];
                 break;
             case 2:
-                offset = strtoul(argv[i], NULL, 0);
+                config.offset = strtoul(argv[i], NULL, 0);
                 break;
             default:
                 print_help();
@@ -74,26 +93,25 @@ int main(int argc, char **argv)
         i++;
     }
 
-    if (!inprog_name) {
+    if (!config.inprog_name) {
         fprintf(stderr, "You must specify an input program binary\n");
         return 1;
     }
 
-    if (!outprog_name) {
+    if (!config.outprog_name) {
         fprintf(stderr, "You must specify a file path to the output program binary\n");
         return 1;
     }
 
-    if (offset == (unsigned)-1) {
+    if (config.offset == (unsigned)-1) {
         fprintf(stderr, "You must specify a file offset for base of patch\n");
         return 1;
     }
 
-    if (is_arch_valid(arch) == false) {
-        fprintf(stderr, "Invalid architecture specified: %s\n", arch);
+    if (is_arch_valid(config.arch.archname) == false) {
+        fprintf(stderr, "Invalid architecture specified: %s\n", config.arch.archname);
         return 1;
     }
 
-    printf("%s %s\n", inprog_name, outprog_name);
-    return 0;
+    return patch_file(&config) == false;
 }
