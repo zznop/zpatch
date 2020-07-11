@@ -1,6 +1,7 @@
 base_env = Environment(
     BUILD_DIR='build',
     CFLAGS=['-W', '-Wall', '-O2'],
+    LIBS=['capstone'],
 )
 
 base_env.SConscript(

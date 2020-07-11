@@ -3,8 +3,14 @@
 
 #include <stdbool.h>
 
-#define SOURCE_FILENAME "patch.S"
+#define AS           "/usr/bin/m68k-linux-gnu-as"
+#define LD           "/usr/bin/m68k-linux-gnu-ld"
+#define PATCH_SOURCE "patch.S"
+#define PATCH_OBJECT "patch.o"
+#define PATCH_BIN    "patch.bin"
 
 bool write_patch_assembly(void);
+bool assemble_patch(void);
+bool extract_bin(uint32_t offset);
 
 #endif

@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include "file.h"
 #include "config.h"
+#include "disassemble.h"
 #include "assemble.h"
 
 static void print_help(void)
@@ -42,10 +43,31 @@ static bool patch_file(config_t *config)
     if (rv == false)
         return false;
 
+    /* Display instructions in region the user wants to patch */
+    rv = disassemble_chunk(inprog->data, inprog->size, config->offset);
+    if (rv == false)
+        goto done;
+
+    printf("Press ENTER key to continue\n");  
+    getchar();
+
     rv = write_patch_assembly();
     if (rv == false)
         goto done;
 
+    printf("Attempting to compile the patch file ...\n");
+    rv = assemble_patch();
+    if (rv == false) {
+        fprintf(stderr, "Failed to assemble patch file\n");
+        goto done;
+    }
+
+    printf("Extracting patch code from object file ...\n");
+    rv = extract_bin(config->offset);
+    if (rv == false) {
+        fprintf(stderr, "Failed to extract patch code\n");
+        goto done;
+    }
 done:
     unmap_file(inprog);
     return rv;
