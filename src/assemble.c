@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <limits.h>
 #include "assemble.h"
+#include "config.h"
 
 extern char **environ;
 
@@ -26,14 +27,14 @@ static bool _touch_source_file(void)
 
     file = fopen(PATCH_SOURCE, "w");
     if (file == NULL) {
-        fprintf(stderr, "Failed to create patch source file\n");
+        fprintf(stderr, ERR "Failed to create patch source file\n");
         return false;
     }
 
     header_len = strlen(header);
     n = fwrite(header, 1, header_len, file);
     if (n != header_len) {
-        fprintf(stderr, "Failed to write to patch source file\n");
+        fprintf(stderr, ERR "Failed to write to patch source file\n");
         goto out;
     }
     rv = true;
@@ -66,7 +67,7 @@ bool write_patch_assembly(void)
     /* Select a text editor to spawn */
     rv = _select_editor(path);
     if (rv == false) {
-        fprintf(stderr, "Failed to find a text editor\n");
+        fprintf(stderr, ERR "Failed to find a text editor\n");
         return false;
     }
     argv[0] = path;
@@ -104,15 +105,11 @@ bool assemble_patch(void)
     return WEXITSTATUS(status) == 0;
 }
 
-bool extract_bin(uint32_t offset)
+bool extract_bin()
 {
     pid_t pid;
     int status;
-    char str_ofs[5];
-    char *argv[] = { LD, "-Ttext", NULL, "--oformat", "binary", PATCH_OBJECT, "-o", PATCH_BIN, NULL };;
-
-    sprintf(str_ofs, "%u", offset);
-    argv[2] = str_ofs;
+    char *argv[] = { OBJCOPY, "-O", "binary", "--only-section=.text", PATCH_OBJECT, PATCH_BIN, NULL };;
 
     pid = fork();
     if (pid == 0) {
@@ -124,3 +121,9 @@ bool extract_bin(uint32_t offset)
     return WEXITSTATUS(status) == 0;
 }
 
+void cleanup_patch_artifacts(void)
+{
+    unlink(PATCH_SOURCE);
+    unlink(PATCH_OBJECT);
+    unlink(PATCH_BIN);
+}

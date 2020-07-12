@@ -8,35 +8,32 @@
 #include "disassemble.h"
 #include "assemble.h"
 
+static void print_banner(void)
+{
+    printf(
+        "\033[0;33m"
+        " ____  ____   __   ____  ___  _   _\n"
+        "(_   )(  _ \\ /__\\ (_  _)/ __)( )_( )\n"
+        " / /_  )___//(__)\\  )( ( (__  ) _ (\n"
+        "(____)(__) (__)(__)(__) \\___)(_) (_)\n\n"
+        "\033[0m"
+    );
+}
+
 static void print_help(void)
 {
     printf(
         "Zpatch v1.0 ( https://zznop.com )\n"
         "Usage: zpatch [options] input-file output-file offset\n"
         "  -h                Print usage\n"
-        "  -a [arch]         Instruction set architecture of target binary. Valid inputs include:\n"
-        "                      m68k      Motorola 68000 (default)\n"
-        "                      x86_64    Intel x86-64\n"
     );
-}
-
-static bool is_arch_valid(char *arch)
-{
-    char *archs[] = { "m68k", "x86_64" };
-    size_t i;
-
-    for (i = 0; i < sizeof(archs)/sizeof(char *); i++) {
-        if (!strcmp(arch, archs[i]))
-            return true;
-    }
-
-    return false;
 }
 
 static bool patch_file(config_t *config)
 {
     bool rv;
     mapped_file_t *inprog = NULL;
+    mapped_file_t *patch = NULL;
 
     /* Map the input file */
     rv = map_file(&inprog, config->inprog_name);
@@ -55,21 +52,33 @@ static bool patch_file(config_t *config)
     if (rv == false)
         goto done;
 
-    printf("Attempting to compile the patch file ...\n");
+    printf(INFO "Attempting to compile the patch file ...\n");
     rv = assemble_patch();
     if (rv == false) {
-        fprintf(stderr, "Failed to assemble patch file\n");
+        fprintf(stderr, ERR "Failed to assemble patch file\n");
         goto done;
     }
 
-    printf("Extracting patch code from object file ...\n");
-    rv = extract_bin(config->offset);
+    printf(INFO "Extracting patch code from object file ...\n");
+    rv = extract_bin();
     if (rv == false) {
-        fprintf(stderr, "Failed to extract patch code\n");
+        fprintf(stderr, ERR "Failed to extract patch code\n");
         goto done;
     }
+
+    printf(INFO "Loading patch file data into memory ...\n");
+    rv = map_file(&patch, PATCH_BIN);
+    if (rv == false)
+        goto done;
+
+    printf(INFO "Applying patch ...\n");
+    rv = export_patched_file(inprog, patch, config->offset, config->outprog_name);
+    if (rv == false)
+        goto done;
 done:
     unmap_file(inprog);
+    unmap_file(patch);
+    cleanup_patch_artifacts();
     return rv;
 }
 
@@ -80,17 +89,13 @@ int main(int argc, char **argv)
     int j = 0;
     config_t config = {0};
 
-    config.arch.archname = "m68k";
     config.offset = -1;
     while (i < argc) {
-        if ((opt = getopt(argc, argv, "ha:")) != -1) {
+        if ((opt = getopt(argc, argv, "h")) != -1) {
             switch (opt) {
             case 'h':
                 print_help();
                 return 0;
-            case 'a':
-                config.arch.archname = optarg; i++;
-                break;
             default:
                 print_help();
                 return 1;
@@ -116,24 +121,20 @@ int main(int argc, char **argv)
     }
 
     if (!config.inprog_name) {
-        fprintf(stderr, "You must specify an input program binary\n");
+        fprintf(stderr, ERR "You must specify an input program binary\n");
         return 1;
     }
 
     if (!config.outprog_name) {
-        fprintf(stderr, "You must specify a file path to the output program binary\n");
+        fprintf(stderr, ERR "You must specify a file path to the output program binary\n");
         return 1;
     }
 
     if (config.offset == (unsigned)-1) {
-        fprintf(stderr, "You must specify a file offset for base of patch\n");
+        fprintf(stderr, ERR "You must specify a file offset for base of patch\n");
         return 1;
     }
 
-    if (is_arch_valid(config.arch.archname) == false) {
-        fprintf(stderr, "Invalid architecture specified: %s\n", config.arch.archname);
-        return 1;
-    }
-
+    print_banner();
     return patch_file(&config) == false;
 }

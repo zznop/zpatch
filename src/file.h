@@ -26,4 +26,15 @@ bool map_file(mapped_file_t **file, const char *filename);
  */
 void unmap_file(mapped_file_t *file);
 
+/**
+ * Apply patch and export file
+ *
+ * @param inprog Mapped input file
+ * @param patch Mapped patch file
+ * @param offset Base offset for patch application
+ * @param outfile File patch to patched file
+ * @return true for success, false for failure
+ */
+bool export_patched_file(mapped_file_t *inprog, mapped_file_t *patch, uint32_t offset, char *outfile);
+
 #endif

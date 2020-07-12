@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "file.h"
+#include "config.h"
 
 static int _get_file_size(const char *filepath)
 {
@@ -25,25 +26,25 @@ bool map_file(mapped_file_t **file, const char *filename)
     *file = NULL;
     size = _get_file_size(filename);
     if (size < 0) {
-        fprintf(stderr, "Failed to get file size: %s\n", filename);
+        fprintf(stderr, ERR "Failed to get file size: %s\n", filename);
         return false;
     }
 
     fd = open(filename, O_RDONLY);
     if (fd == -1) {
-        fprintf(stderr, "Failed to open file\n");
+        fprintf(stderr, ERR "Failed to open file\n");
         return false;
     }
 
     data = (void *)mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (!data) {
-        fprintf(stderr, "Failed to map file\n");
+        fprintf(stderr, ERR "Failed to map file\n");
         goto error;
     }
 
     *file = (mapped_file_t *)malloc(sizeof(mapped_file_t));
     if (!*file) {
-        fprintf(stderr, "Failed to allocate memory for file mapping");
+        fprintf(stderr, ERR "Failed to allocate memory for file mapping");
         goto error;
     }
 
@@ -72,3 +73,44 @@ void unmap_file(mapped_file_t *file)
     free(file);
 }
 
+bool export_patched_file(mapped_file_t *inprog, mapped_file_t *patch, uint32_t offset, char *outfile)
+{
+    int fd;
+    int n;
+    int remaining;
+    bool rv = false;
+
+    fd = open(outfile, O_RDWR|O_CREAT|O_TRUNC, 0777);
+    if (fd == -1) {
+        fprintf(stderr, ERR "Failed to create patched file\n");
+        return false;
+    }
+
+    printf(INFO "Writing data until patch offset (size: %u) ...\n", offset);
+    n = write(fd, inprog->data, offset);
+    if ((uint32_t)n != offset) {
+        fprintf(stderr, ERR "Failed to export patched file (initial data write)\n");
+        goto done;
+    }
+
+    printf(INFO "Writing patch file (size: %u) ...\n", patch->size);
+    n = write(fd, patch->data, patch->size);
+    if (n != patch->size) {
+        fprintf(stderr, ERR "Failed to export patched file (patch write)\n");
+        goto done;
+    }
+
+    remaining = inprog->size - offset - patch->size;
+    printf(INFO "Writing remaining data (size: %u) ...\n",  remaining);
+    n = write(fd, inprog->data+offset+patch->size, remaining);
+    if (n != remaining) {
+        fprintf(stderr, ERR "Failed to export patched file (remaining data write)\n");
+        goto done;
+    }
+
+    printf(SUCCESS "Patch applied successfully! (File path: %s)\n", outfile);
+    rv = true;
+done:
+    close(fd);
+    return rv;
+}

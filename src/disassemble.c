@@ -1,5 +1,6 @@
 #include <capstone/capstone.h>
 #include "disassemble.h"
+#include "config.h"
 
 #define MAX_DISAS_SIZE 128
 
@@ -23,7 +24,7 @@ bool disassemble_chunk(uint8_t *buffer, size_t size, uint32_t offset)
         return true;
     }
 
-    printf("Patch will overwrite one or more of the following instructions:\n\n");
+    printf(INFO "Patch will overwrite one or more of the following instructions:\n\n");
     for (i = 0; i < count; i++)
         printf("  0x%" PRIx64 ":  %s    %s\n", insn[i].address, insn[i].mnemonic, insn[i].op_str);
     printf("\n");

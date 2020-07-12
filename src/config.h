@@ -3,16 +3,14 @@
 
 #include <stdint.h>
 
-struct architecture {
-    char *archname;
-    int cs_arch;
-};
-
 typedef struct {
     char *inprog_name;
     char *outprog_name;
     uint32_t offset;
-    struct architecture arch;
 } config_t;
+
+#define INFO "\033[0;36m[*]\033[0m "
+#define SUCCESS "\033[0;32m[+]\033[0m "
+#define ERR  "\033[0;31m[!]\033[0m "
 
 #endif
