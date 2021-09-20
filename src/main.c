@@ -8,7 +8,7 @@
 #include "disassemble.h"
 #include "assemble.h"
 
-static void print_banner(void)
+static void _print_banner(void)
 {
     printf(
         "\033[0;33m"
@@ -20,61 +20,59 @@ static void print_banner(void)
     );
 }
 
-static void print_help(void)
+static void _print_help(void)
 {
     printf(
-        "Zpatch v1.0 ( https://zznop.com )\n"
+        "zpatch v1.0 ( https://zznop.com )\n"
         "Usage: zpatch [options] input-file output-file offset\n"
-        "  -h                Print usage\n"
+        "  -h    Print usage\n"
     );
 }
 
-static bool patch_file(config_t *config)
+static bool _patch_file(config_t *config)
 {
     bool rv;
     mapped_file_t *inprog = NULL;
     mapped_file_t *patch = NULL;
 
-    /* Map the input file */
+    // Map the input file
     rv = map_file(&inprog, config->inprog_name);
-    if (rv == false)
+    if (!rv)
         return false;
 
-    /* Display instructions in region the user wants to patch */
+    // Display instructions in region the user wants to patch
     rv = disassemble_chunk(inprog->data, inprog->size, config->offset);
-    if (rv == false)
+    if (!rv)
         goto done;
 
     printf("Press ENTER key to continue\n");  
     getchar();
 
     rv = write_patch_assembly();
-    if (rv == false)
+    if (!rv)
         goto done;
 
     printf(INFO "Attempting to compile the patch file ...\n");
     rv = assemble_patch();
-    if (rv == false) {
+    if (!rv) {
         fprintf(stderr, ERR "Failed to assemble patch file\n");
         goto done;
     }
 
     printf(INFO "Extracting patch code from object file ...\n");
     rv = extract_bin();
-    if (rv == false) {
+    if (!rv) {
         fprintf(stderr, ERR "Failed to extract patch code\n");
         goto done;
     }
 
     printf(INFO "Loading patch file data into memory ...\n");
     rv = map_file(&patch, PATCH_BIN);
-    if (rv == false)
+    if (!rv)
         goto done;
 
     printf(INFO "Applying patch ...\n");
     rv = export_patched_file(inprog, patch, config->offset, config->outprog_name);
-    if (rv == false)
-        goto done;
 done:
     unmap_file(inprog);
     unmap_file(patch);
@@ -94,10 +92,10 @@ int main(int argc, char **argv)
         if ((opt = getopt(argc, argv, "h")) != -1) {
             switch (opt) {
             case 'h':
-                print_help();
+                _print_help();
                 return 0;
             default:
-                print_help();
+                _print_help();
                 return 1;
             }
         } else {
@@ -112,7 +110,7 @@ int main(int argc, char **argv)
                 config.offset = strtoul(argv[i], NULL, 0);
                 break;
             default:
-                print_help();
+                _print_help();
                 return 1;
             }
             j++;
@@ -135,6 +133,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    print_banner();
-    return patch_file(&config) == false;
+    _print_banner();
+    return _patch_file(&config) == false;
 }

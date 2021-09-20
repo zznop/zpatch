@@ -1,5 +1,4 @@
-#ifndef _ASSEMBLE_H
-#define _ASSEMBLE_H
+#pragma once
 
 #include <stdbool.h>
 
@@ -13,5 +12,3 @@ bool write_patch_assembly(void);
 bool assemble_patch(void);
 bool extract_bin();
 void cleanup_patch_artifacts(void);
-
-#endif

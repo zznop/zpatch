@@ -26,7 +26,7 @@ static bool _touch_source_file(void)
     );
 
     file = fopen(PATCH_SOURCE, "w");
-    if (file == NULL) {
+    if (!file) {
         fprintf(stderr, ERR "Failed to create patch source file\n");
         return false;
     }
@@ -64,27 +64,27 @@ bool write_patch_assembly(void)
     char path[PATH_MAX];
     char *argv[3] = {0};
 
-    /* Select a text editor to spawn */
+    // Select a text editor to spawn
     rv = _select_editor(path);
-    if (rv == false) {
+    if (!rv) {
         fprintf(stderr, ERR "Failed to find a text editor\n");
         return false;
     }
     argv[0] = path;
     argv[1] = PATCH_SOURCE;
 
-    /* Create template patch.S source file */
-    if (_touch_source_file() == false)
+    // Create template patch.S source file
+    if (!_touch_source_file())
         return false;
 
-    /* Fork and open patch.S file in editor in child */
+    // Fork and open patch.S file in editor in child
     pid = fork();
     if (pid == 0) {
         execve(argv[0], argv, environ);
         _exit(1);
     }
 
-    /* Parent waits for child to finish */
+    // Parent waits for child to finish
     waitpid(pid, &status, 0);
     return true;
 }

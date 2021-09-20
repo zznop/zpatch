@@ -20,7 +20,7 @@ bool disassemble_chunk(uint8_t *buffer, size_t size, uint32_t offset)
 
     count = cs_disasm(handle, buffer+offset, disas_size, offset, 0, &insn);
     if (count <= 0) {
-        /* TODO: print hex dump */
+        // TODO: print hex dump
         return true;
     }
 
